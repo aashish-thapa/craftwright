@@ -9,7 +9,7 @@ repos:
         name: Regenerate AGENTS.md / CLAUDE.md / GEMINI.md from skills/
         entry: scripts/sync.sh
         language: system
-        files: ^(skills/.*\.md|scripts/sync\.sh)$
+        files: ^(skills/.*\.md|agents/.*\.md|scripts/sync\.sh)$
         pass_filenames: false
         always_run: false
 
