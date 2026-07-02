@@ -190,6 +190,36 @@ For belt-and-suspenders prevention in Claude Code, also drop these into `~/.clau
 
 For other tools, the equivalent is a git `pre-commit` hook — copy `hooks/block-ai-attribution-commits.sh` and adapt the input parsing (it currently reads Claude Code's stdin JSON format).
 
+## Stated isn't enforced
+
+A rule written once in an 800-line skill decays. As a session fills with context, the agent drifts back to god classes and concrete coupling — the discipline was *stated*, never *held*. craftwright closes that gap from two sides.
+
+### The always-on core (fights drift)
+
+[`core.md`](core.md) is the compressed spine — the whole discipline distilled to a page you could keep in your head. The Claude Code plugin re-injects it through `hooks/inject-core.sh` at the moments context is fresh or has just been summarized away:
+
+| Hook event | What's injected | Why |
+|---|---|---|
+| **SessionStart** (`startup`, `resume`, `clear`, **`compact`**) | full core | the `compact` reload is the key one — the rules come *back* the instant compaction would have dropped them |
+| **SubagentStart** | full core | discipline survives fan-out; spawned agents inherit it |
+| **UserPromptSubmit** | one-line structure-check digest (derived from `core.md`, so it can't drift) | cheap per-turn re-anchor without re-paying the whole core |
+
+The result: "depend on abstractions, one reason to change, no tripwires" is in front of the model at message 80, not just message 1.
+
+### The enforcement layer (makes bad patterns fail)
+
+Reminder-only rulesets tell the agent not to write `pickle.loads`. craftwright can make the commit **fail**. [`configs/`](configs/) ships copyable, source-verified configs that turn the mechanically-checkable rules into gates:
+
+- **ruff** — the §Never-in-production tripwires (`assert`-for-validation, bare `except`, `print`, `pickle`/`eval`, `shell=True`, naïve datetime, blocking I/O in async, ...).
+- **import-linter** — §DIP / §Separation of Concerns as failing CI: the domain layer *cannot* import web/adapters.
+- **gitleaks** — hardcoded secrets. **shellcheck** — the shell craftwright itself ships (it dogfoods its own rules).
+
+The configs are honest about the ceiling: `float`-for-money and god-class *intent* aren't lintable — those stay the job of the injected core and the review skill. See [`configs/README.md`](configs/README.md) for the full rule → check map.
+
+### Does it actually work? ([`benchmarks/`](benchmarks/))
+
+craftwright measures its own claim instead of asserting it: a [promptfoo](https://www.promptfoo.dev/) harness runs the same coding tasks with and without the core injected, and an LLM judge scores each result blind for SOLID violations and god classes. Two arms, one delta. Bring your own API keys — it's not run in CI.
+
 ## Why this and not one of the 425 other Claude / Codex / Cursor plugins
 
 craftwright is **a stance, not a library**.
@@ -205,9 +235,21 @@ craftwright/
 ├── skills/                          ← single source of truth (Claude Code SKILL.md files)
 │   ├── discipline/SKILL.md
 │   └── review/SKILL.md
-├── hooks/                           ← Claude Code PreToolUse hook
-│   ├── hooks.json
+├── core.md                          ← compressed spine, re-injected to fight drift
+├── hooks/                           ← Claude Code hooks
+│   ├── hooks.json                   ← SessionStart/SubagentStart/UserPromptSubmit + PreToolUse
+│   ├── inject-core.sh               ← re-injects core.md (incl. after compaction)
 │   └── block-ai-attribution-commits.sh
+├── configs/                         ← copyable enforcement configs (ruff, import-linter, gitleaks)
+│   ├── README.md                    ← rule → check map
+│   ├── pyproject.ruff.toml
+│   ├── importlinter.example.toml
+│   └── pre-commit-config.example.yaml
+├── benchmarks/                      ← promptfoo harness: does the core reduce god classes?
+│   ├── README.md
+│   ├── promptfooconfig.yaml
+│   ├── rubric.md
+│   └── tasks.yaml
 ├── AGENTS.md                        ← generated cross-tool entry (Codex, Cursor, Aider, ...)
 ├── CLAUDE.md                        ← copy for Claude Code's native entry
 ├── GEMINI.md                        ← copy for Gemini CLI's native entry
