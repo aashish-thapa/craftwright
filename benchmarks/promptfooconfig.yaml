@@ -1,10 +1,11 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
-# craftwright benchmark wiring. Verified against promptfoo 0.121.17 (llm-rubric
-# assertion, prompts/providers/tests/vars/assert fields). Needs your own model API
-# keys and costs money — not run in CI.
+# craftwright benchmark wiring. Schema verified against promptfoo 0.121.17 (llm-rubric
+# assertion, prompts/providers/tests/vars/assert fields); pinned to run on 0.120.0,
+# the newest release whose engine still allows node <22.22 (identical schema).
+# Defaults to local ollama, so no API keys and no cost — not run in CI.
 #
-#   cd benchmarks && npx promptfoo@0.121.17 eval && npx promptfoo view
+#   cd benchmarks && OLLAMA_BASE_URL=http://localhost:11434 npx -y promptfoo@0.120.0 eval && npx promptfoo view
 #
 # Two arms from two prompts, run against the same tasks:
 #   - "baseline"    : the task, no craftwright context
@@ -23,16 +24,22 @@ prompts:
     You are a senior software engineer. Write {{language}} code for this task.
     Task: {{task}}
 
-# Model under test. Provider IDs are environment-dependent — set to your own.
+# Models under test. Defaults to local ollama so the benchmark runs with zero API
+# keys / zero cost (OLLAMA_BASE_URL defaults to http://localhost:11434). Two sizes
+# to show whether craftwright helps weaker models more. Swap in a hosted provider
+# (e.g. anthropic:messages:claude-sonnet-4-6) if you have keys and want a stronger run.
 providers:
-  - anthropic:messages:claude-sonnet-4-6
+  - ollama:chat:qwen2.5:7b
+  - ollama:chat:llama3.2:3b
 
 defaultTest:
   vars:
     core: file://../core.md
   options:
-    # Judge should differ from the model under test so it doesn't reward its own style.
-    provider: openai:gpt-4o
+    # Judge = the strongest local model. Caveat: when it grades its own (qwen)
+    # output there's self-bias; the llama-under-test rows judged by qwen are the
+    # cleaner cross-model comparison. Use a hosted grader if you have a key.
+    provider: ollama:chat:qwen2.5:7b
   assert:
     - type: llm-rubric
       value: >

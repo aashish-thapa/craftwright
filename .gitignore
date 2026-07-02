@@ -3,3 +3,6 @@
 *.swo
 .idea/
 .vscode/
+
+# promptfoo eval output (the dated results/*.md is the kept artifact)
+benchmarks/results.json
