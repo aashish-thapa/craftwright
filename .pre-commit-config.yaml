@@ -1,6 +1,7 @@
 # Run `pre-commit install` once to enable. After that, `AGENTS.md`, `CLAUDE.md`,
 # and `GEMINI.md` are regenerated from `skills/*/SKILL.md` on every commit that
-# touches those files — they can't drift out of sync.
+# touches those files — they can't drift out of sync. craftwright also dogfoods
+# its own §Never-in-production rule by shellcheck-ing the shell it ships.
 repos:
   - repo: local
     hooks:
@@ -11,3 +12,9 @@ repos:
         files: ^(skills/.*\.md|scripts/sync\.sh)$
         pass_filenames: false
         always_run: false
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.11.0
+    hooks:
+      - id: shellcheck
+        files: \.sh$

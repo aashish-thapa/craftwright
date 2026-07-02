@@ -1,0 +1,41 @@
+# craftwright — ruff config that mechanically enforces the §Never-in-production
+# tripwires. Copy this [tool.ruff.lint] block into your pyproject.toml.
+#
+# Verified against ruff 0.15.20 (https://docs.astral.sh/ruff/rules/, 2026-07).
+# Re-check the codes before adopting a newer ruff — rule IDs occasionally move.
+#
+# Each selected code maps to a rule craftwright tells the agent to "reject on sight".
+# The point is to make that rejection a failing check, not a thing the model must
+# remember at line 800 of a session.
+
+[tool.ruff.lint]
+select = [
+    # --- flake8-bandit (S) — the bulk of §Never-in-production ---
+    "S101",  # assert used for validation (stripped by python -O)
+    "S102",  # exec
+    "S307",  # eval
+    "S105", "S106", "S107",          # hardcoded secrets
+    "S301", "S302", "S403",          # pickle / marshal (unsafe deserialization)
+    "S506",                          # yaml.load (use safe_load)
+    "S602", "S603", "S604",          # subprocess with shell=True
+    "S605", "S606", "S607",          # os.system / shell-spawn
+    "S608",                          # string-interpolated SQL
+    "S701",                          # jinja2 autoescape=False
+
+    # --- other families ---
+    "T201", "T203",  # print / pprint as logging (flake8-print)
+    "DTZ",           # naive datetime — utcnow()=DTZ003, now() w/o tz=DTZ005, ...
+    "ASYNC",         # blocking I/O in async — time.sleep=ASYNC251, open=ASYNC230, ...
+    "BLE001",        # blind `except Exception` / `except BaseException`
+    "E722",          # bare `except:`
+]
+
+# `assert` is legitimate in tests — don't fight pytest.
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"**/conftest.py" = ["S101"]
+
+# NOT mechanically enforceable — these stay review-and-typing concerns:
+#   * float for money      → no ruff/bandit rule exists. Use Decimal / minor units.
+#   * "untrusted" input to eval/pickle/yaml → the linter flags the *call* (above),
+#     but cannot prove the argument is attacker-controlled. Expect a curated allowlist.
