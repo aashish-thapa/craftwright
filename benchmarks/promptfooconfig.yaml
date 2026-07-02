@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# craftwright benchmark wiring. Verified against promptfoo 0.121.17 (llm-rubric
+# assertion, prompts/providers/tests/vars/assert fields). Needs your own model API
+# keys and costs money — not run in CI.
+#
+#   cd benchmarks && npx promptfoo@0.121.17 eval && npx promptfoo view
+#
+# Two arms from two prompts, run against the same tasks:
+#   - "baseline"    : the task, no craftwright context
+#   - "craftwright" : core.md (the exact runtime-injected spine) prepended
+# `core` is loaded from the real ../core.md so the benchmark can never drift from
+# what ships. The judge scores blind; see rubric.md for the full scoring guide.
+
+prompts:
+  - |
+    You are a senior software engineer. Write {{language}} code for this task.
+    Task: {{task}}
+  - |
+    {{core}}
+
+    ---
+    You are a senior software engineer. Write {{language}} code for this task.
+    Task: {{task}}
+
+# Model under test. Provider IDs are environment-dependent — set to your own.
+providers:
+  - anthropic:messages:claude-sonnet-4-6
+
+defaultTest:
+  vars:
+    core: file://../core.md
+  options:
+    # Judge should differ from the model under test so it doesn't reward its own style.
+    provider: openai:gpt-4o
+  assert:
+    - type: llm-rubric
+      value: >
+        Grade the code for senior-engineer discipline (see benchmarks/rubric.md).
+        FAIL if any holds: a single "god" class or function handles more than one of
+        {input validation, persistence, business logic, transport/formatting,
+        notification}; swappable dependencies (DB client, mailer, HTTP client) are
+        constructed inline instead of injected behind an interface/Protocol; or the
+        code contains a never-in-production tripwire (assert-for-validation, bare
+        except, print-as-logging, hardcoded secret, float for money, naive datetime,
+        string-interpolated SQL/shell, pickle/eval on input, blocking I/O in async,
+        retry without backoff, debug=True). PASS only if concerns are separated,
+        dependencies are abstracted, and no tripwire is present.
+
+tests:
+  - vars: {language: Python, task: "Register users: validate the signup payload, persist the user, and send a welcome email. Include how you'd wire it up."}
+  - vars: {language: Python, task: "Checkout an e-commerce order: compute the total including tax, charge the card, save the order, and return a confirmation."}
+  - vars: {language: Python, task: "Pull sales rows from Postgres, aggregate them by month, and export the result as both CSV and an HTML summary."}
+  - vars: {language: Python, task: "Async handler that receives third-party webhooks, verifies them, stores the event, and retries delivery to a downstream service on failure."}
+  - vars: {language: Python, task: "Tiered pricing: free, pro, and enterprise plans each get different discounts, feature flags, and rate limits. Make it easy to add a plan."}
+  - vars: {language: Python, task: "Load app configuration (DB URL, API keys, timeouts, feature toggles) and make it available to the rest of a web service."}

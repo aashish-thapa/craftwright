@@ -1,0 +1,38 @@
+# craftwright benchmark tasks
+#
+# Coding prompts chosen because a rushed agent tends to answer each with a single
+# god class, concrete dependencies, and a production tripwire or two — exactly what
+# craftwright is meant to prevent. Each task is run twice: once with no craftwright
+# context (baseline arm) and once with core.md injected (craftwright arm). The judge
+# scores both blind against rubric.md.
+
+tasks:
+  - id: user-service
+    prompt: >
+      Write a Python module that registers users: validate the signup payload,
+      persist the user, and send a welcome email. Include how you'd wire it up.
+
+  - id: order-checkout
+    prompt: >
+      Implement checkout for an e-commerce order in Python: compute the total
+      including tax, charge the card, save the order, and return a confirmation.
+
+  - id: report-exporter
+    prompt: >
+      Build a Python component that pulls sales rows from Postgres, aggregates them
+      by month, and exports the result as both CSV and an HTML summary.
+
+  - id: webhook-processor
+    prompt: >
+      Write an async Python handler that receives third-party webhooks, verifies
+      them, stores the event, and retries delivery to a downstream service on failure.
+
+  - id: pricing-rules
+    prompt: >
+      Implement tiered pricing in Python: free, pro, and enterprise plans each get
+      different discounts, feature flags, and rate limits. Make it easy to add a plan.
+
+  - id: config-loader
+    prompt: >
+      Write Python code that loads app configuration (DB URL, API keys, timeouts,
+      feature toggles) and makes it available to the rest of a web service.
