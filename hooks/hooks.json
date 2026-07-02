@@ -1,6 +1,42 @@
 {
-  "description": "Block git commits whose message contains an AI-attribution footer (Co-Authored-By: Claude, Generated with Claude Code).",
+  "description": "craftwright: re-inject the compressed discipline core at session start, after compaction, on each prompt, and into subagents so SOLID/DRY discipline survives context pressure; and block git commits carrying an AI-attribution footer.",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-core.sh\"",
+            "timeout": 5,
+            "statusMessage": "Loading craftwright discipline..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-core.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-core.sh\"",
+            "timeout": 5,
+            "statusMessage": "Loading craftwright discipline..."
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
