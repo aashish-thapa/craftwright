@@ -1,0 +1,44 @@
+# craftwright — import-linter contracts that enforce §DIP, §Separation of Concerns,
+# and §Stable Dependencies as *failing CI*, not vibes. This is the one architectural
+# rule set that's actually mechanically checkable: dependency direction.
+#
+# Verified against import-linter 2.12 (https://import-linter.readthedocs.io/, 2026-07).
+# Run with:  lint-imports   (from your project root)
+#
+# Replace `myapp` and the layer names with your package. TOML is only parsed when the
+# file extension is .toml — put this in pyproject.toml, or keep it standalone and pass
+# `lint-imports --config configs/importlinter.example.toml`.
+
+[tool.importlinter]
+root_package = "myapp"
+
+# The domain never imports transport/adapters; policy depends on abstractions,
+# details depend inward. Layers are listed highest (most volatile) to lowest
+# (most stable). A lower layer importing a higher one fails the check.
+[[tool.importlinter.contracts]]
+name = "Layered architecture (web -> application -> domain)"
+type = "layers"
+layers = [
+    "myapp.web",          # transport / HTTP / CLI — volatile
+    "myapp.application",  # use cases / orchestration
+    "myapp.domain",       # entities, value objects, Protocols — stable
+]
+
+# Redundant with the layers contract, but states the one prohibition craftwright
+# cares about most, loudly and by name. Keep it — a named failure reads better.
+[[tool.importlinter.contracts]]
+name = "Domain must not import web or adapters (§DIP, §Stable Dependencies)"
+type = "forbidden"
+source_modules = ["myapp.domain"]
+forbidden_modules = ["myapp.web", "myapp.adapters"]
+
+# Optional: keep sibling feature packages from depending on each other, so each
+# stays independently changeable (§High Cohesion, Low Coupling).
+[[tool.importlinter.contracts]]
+name = "Feature packages are independent"
+type = "independence"
+modules = [
+    "myapp.billing",
+    "myapp.auth",
+    "myapp.search",
+]
