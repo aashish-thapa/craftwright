@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# craftwright: regenerate AGENTS.md / CLAUDE.md / GEMINI.md from skills/*/SKILL.md.
-# Run after editing any SKILL.md so cross-tool entry files stay in sync.
+# craftwright: regenerate AGENTS.md / CLAUDE.md / GEMINI.md from the canonical
+# sources — skills/discipline/SKILL.md and agents/review.md. Run after editing
+# either so the cross-tool entry files stay in sync.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -26,7 +27,7 @@ For Claude Code's richer plugin install (skills + the commit-attribution hook), 
 
 EOF
 
-  for skill_md in skills/discipline/SKILL.md skills/review/SKILL.md; do
+  for skill_md in skills/discipline/SKILL.md agents/review.md; do
     strip_frontmatter "$skill_md"
     echo
     echo "---"

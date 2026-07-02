@@ -22,7 +22,7 @@ Start Codex CLI in the project. Ask: "What design principles do you follow when 
 
 ## What you get
 
-The full discipline + senior-review skill content as plain markdown. No frontmatter, no plugin shape — Codex just reads the rules.
+The full discipline + senior-review content as plain markdown. No frontmatter, no plugin shape — Codex just reads the rules.
 
 ## What you don't get
 

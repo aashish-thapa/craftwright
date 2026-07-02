@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <a href="https://agents.md"><img src="https://img.shields.io/badge/AGENTS.md-compatible-0ea5e9" alt="AGENTS.md compatible" /></a>
-  <a href="#install"><img src="https://img.shields.io/badge/skills-2-2ea44f" alt="2 skills" /></a>
+  <a href="#install"><img src="https://img.shields.io/badge/discipline-skill%20%2B%20review%20agent-2ea44f" alt="discipline skill + review agent" /></a>
   <a href="#install"><img src="https://img.shields.io/badge/tool--agnostic-yes-8A2BE2" alt="Tool-agnostic" /></a>
 </p>
 
@@ -19,10 +19,10 @@
 
 Modern AI coding agents produce code that compiles, passes tests, and ships. A senior engineer reading the diff sees five principles violated, a `switch` statement that should be polymorphism, and a class doing four things wearing one name.
 
-**craftwright** is the opposite of "vibe coding." Two skills shipped as plain markdown that any AI coding agent can read:
+**craftwright** is the opposite of "vibe coding." A discipline skill and a fresh-context review agent, shipped as plain markdown that any AI coding agent can read:
 
 - A **discipline skill** that teaches your agent 16 system design principles (SOLID, DRY, separation of concerns, composition root, illegal-states-unrepresentable, ...) plus a code-discipline rulebook for commits, comments, scope, and verification.
-- A **senior-review skill** that channels the strict, abstraction-loving reviewer who used to send your PRs back four times — the one who reduced your 100-line function to a 10-line one and wrote the rewrite inline. Now you get him on demand.
+- A **senior-review agent** that channels the strict, abstraction-loving reviewer who used to send your PRs back four times — the one who reduced your 100-line function to a 10-line one and wrote the rewrite inline. It runs as a *fresh context* that sees only your diff, never the conversation that produced it — so it reviews your code, not its own reasoning. Now you get him on demand.
 
 A "wright" is a craftsperson: millwright, playwright, shipwright. **craftwright** is what your AI becomes when you install this.
 
@@ -40,7 +40,7 @@ One source of truth, every tool.
 
 | Your AI tool | Install | Notes |
 |---|---|---|
-| **Claude Code** | `/plugin marketplace add aashish-thapa/craftwright`<br>`/plugin install craftwright@craftwright` | Full: 2 skills + commit hook |
+| **Claude Code** | `/plugin marketplace add aashish-thapa/craftwright`<br>`/plugin install craftwright@craftwright` | Full: discipline skill + review agent + re-injection & commit hooks |
 | **OpenAI Codex CLI** | `curl -sL https://raw.githubusercontent.com/aashish-thapa/craftwright/main/AGENTS.md >> AGENTS.md` | [details](adapters/codex-cli.md) |
 | **Cursor** | `curl -sL .../AGENTS.md > AGENTS.md` | [details](adapters/cursor.md) — reads AGENTS.md natively |
 | **Aider** | `curl -sL .../AGENTS.md > CONVENTIONS.md` | [details](adapters/aider.md) |
@@ -127,9 +127,9 @@ Same shift happens in:
 - **Read before writing** — read the file, run the test, check the version
 - **Risky actions require confirmation** — force-push, hard reset, dropping tables, sending external messages
 
-### 2. The senior-review skill (`skills/review/SKILL.md`)
+### 2. The senior-review agent (`agents/review.md`)
 
-Model-invoked when you ask for a code review, PR review, or "what would a senior engineer say about this." Channels a specific reviewer profile — strict, abstraction-loving, terse, allergic to reinvention.
+Dispatched to a **fresh-context subagent** when you ask for a code review, PR review, or "what would a senior engineer say about this." That freshness is the point: the reviewer never saw the conversation that wrote the code, so it can't rationalize the author's choices — it sees only the diff (plus the discipline core, injected by the SubagentStart hook). Channels a specific reviewer profile — strict, abstraction-loving, terse, allergic to reinvention. Read-only: it reviews, it doesn't edit.
 
 **What it does:**
 
@@ -163,15 +163,9 @@ Model-invoked when you ask for a code review, PR review, or "what would a senior
 >
 > CHANGES_REQUESTED. Address watcher single-responsibility first, then the dbus caching, then coderabbit.
 
-The skill includes a cross-reference table — when the review surfaces a violation, it names the principle from the discipline skill so the author can study it. `Concrete in field declaration → §DIP`. `Class doing four things → §SRP`. `Switch on type → §OCP`.
+The agent includes a cross-reference table — when the review surfaces a violation, it names the principle from the discipline skill so the author can study it. `Concrete in field declaration → §DIP`. `Class doing four things → §SRP`. `Switch on type → §OCP`.
 
-**Invoke explicitly** (Claude Code) when you want it without the model having to infer:
-
-```
-/craftwright:review
-```
-
-For other tools: just ask "review this PR" or "review these changes" — the skill's description triggers the agent to load it.
+**Invoke it** (Claude Code) by asking for a review — "review this PR", "review these changes", "would this pass review" — and Claude dispatches to the `senior-reviewer` agent; or pick it directly from the `/agents` menu. Other tools without a subagent mechanism read the same reviewer standard inline from `AGENTS.md` and review in-context.
 
 ## Bonus: `Co-Authored-By: Claude` is not a thing
 
@@ -214,7 +208,7 @@ Reminder-only rulesets tell the agent not to write `pickle.loads`. craftwright c
 - **import-linter** — §DIP / §Separation of Concerns as failing CI: the domain layer *cannot* import web/adapters.
 - **gitleaks** — hardcoded secrets. **shellcheck** — the shell craftwright itself ships (it dogfoods its own rules).
 
-The configs are honest about the ceiling: `float`-for-money and god-class *intent* aren't lintable — those stay the job of the injected core and the review skill. See [`configs/README.md`](configs/README.md) for the full rule → check map.
+The configs are honest about the ceiling: `float`-for-money and god-class *intent* aren't lintable — those stay the job of the injected core and the review agent. See [`configs/README.md`](configs/README.md) for the full rule → check map.
 
 ### Does it actually work? ([`benchmarks/`](benchmarks/))
 
@@ -232,9 +226,10 @@ craftwright is the opposite: two skills with a single editorial point of view ab
 
 ```
 craftwright/
-├── skills/                          ← single source of truth (Claude Code SKILL.md files)
-│   ├── discipline/SKILL.md
-│   └── review/SKILL.md
+├── skills/                          ← discipline skill (always-on, in-context)
+│   └── discipline/SKILL.md
+├── agents/                          ← fresh-context subagents
+│   └── review.md                    ← senior-reviewer; canonical review source
 ├── core.md                          ← compressed spine, re-injected to fight drift
 ├── hooks/                           ← Claude Code hooks
 │   ├── hooks.json                   ← SessionStart/SubagentStart/UserPromptSubmit + PreToolUse
@@ -275,7 +270,7 @@ PRs and issues welcome. The skills stay **tight and scannable** — additions sh
 - Cross-link related principles inline (`see also: §...`).
 - Avoid project-specific references, framework lock-in, and meta-skill content.
 
-**When editing skills**, run `./scripts/sync.sh` to regenerate the cross-tool entry files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
+**When editing `skills/discipline/SKILL.md` or `agents/review.md`**, run `./scripts/sync.sh` to regenerate the cross-tool entry files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
 
 If proposing a new principle, check whether it's already covered under a different name — there's real overlap between Single Responsibility, Separation of Concerns, and Cohesion/Coupling, and the skill resolves the overlap through cross-links rather than restating the same idea three times.
 
