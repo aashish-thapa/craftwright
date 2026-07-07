@@ -386,6 +386,50 @@ class Account:
 
 ---
 
+### Visibility markers match reach, not authorship
+
+- **Definition:** A leading underscore (Python `_name`), `private`, `internal`, `pub(crate)`, `#field` — every language's "not public" marker makes the same claim: *this name is not part of the surface consumers outside the defining boundary may reference*. Attaching that marker to a name a consumer must import, annotate against, subclass, or `isinstance`-check is a category error. A type is either usable across the boundary or it isn't; there is no third state where it's "usable but privately".
+- **Why:** A "private" name the caller has to reference isn't private — the marker just lies about the contract. Consumers either violate the convention on every use (`from pkg import _Profile`) or wrap it in a re-export that duplicates the surface. Both teach the reader to distrust the language's own visibility signals. The marker becomes noise, and real internals lose the one signal that would have protected them.
+- **How to apply:**
+  - **Underscore is a boundary signal, not a "I haven't decided where this goes" fig leaf.** Apply it only when nothing outside the defining module references the name.
+  - **Types, classes, enums, dataclasses, exceptions, Protocols** that appear in another module's parameter, return type, field annotation, import, subclass, or `isinstance` check — drop the underscore. If it lives on the public surface, name it publicly.
+  - **Reserve underscore for genuine internals:** module-local helpers, module-private constants, private instance state (`self._buffer`), the concrete class hidden behind a public factory that returns the Protocol.
+  - **Modules follow the same rule.** `_foo.py` is fine only when nothing about `foo`'s public surface mentions the names inside it. If its classes leak out through a re-export, a return type, or a `from pkg._foo import ...` in a sibling package, promote it to `foo.py` and give it a real home. See §Domain-Driven Module Organization.
+  - **Protocols cannot have private methods.** A Protocol *is* the public contract; a `_method` on it is either public behavior (rename) or belongs on the concrete implementation, not the abstraction.
+  - **Test:** grep for the underscore-prefixed name from outside the defining module. Any hit is either a rename or a real encapsulation bug.
+- **Anti-example:**
+
+```python
+# devices/_profile.py
+class _Profile:
+    name: str
+    tier: int
+
+# devices/__init__.py
+from ._profile import _Profile   # re-exporting a "private" name is the tell
+
+# billing/service.py
+from devices import _Profile              # caller reaches into a "private" name
+def price_for(p: _Profile) -> Money: ...  # ...and writes `_Profile` in its own signature
+```
+
+- **Example:**
+
+```python
+# devices/profile.py
+class Profile:
+    name: str
+    tier: int
+
+# billing/service.py
+from devices import Profile
+def price_for(p: Profile) -> Money: ...
+```
+
+- **See also:** §Encapsulation, §Domain-Driven Module Organization, §Dependency Inversion
+
+---
+
 ### Tell, Don't Ask / Law of Demeter
 
 - **Definition:** Tell objects what to do; do not ask them for state and act on it externally. A method talks only to its own fields, its parameters, objects it creates, and direct collaborators.
@@ -921,6 +965,7 @@ Authorization for one action does not extend to similar actions. "Yes, push this
 - **Every type annotation that references a swappable dependency uses a Protocol.** See §Dependency Inversion.
 - **The composition root is the only file that imports concrete swappable implementations.** See §Composition Root.
 - **Group files by domain, not by technical type.** See §Domain-Driven Module Organization.
+- **"Private" markers must match actual reach.** An underscore-prefixed type imported, annotated against, or subclassed across the module boundary isn't private — it's a mislabel. Types are either usable outside their module or they aren't. See §Visibility markers match reach.
 - **Validate at the edge, trust internally.** See §Validate at boundaries.
 - **Encode invariants in types and constructors, not in comments.** See §Make Illegal States Unrepresentable.
 - **One concern per commit. No AI-attribution footers. No PR-number references.** See §Commits.

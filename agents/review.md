@@ -145,6 +145,23 @@ If unsure whether the package exists at the project's pinned version, say so. Do
 - **Shadowing builtins** (`dir`, `id`, `type`, `format`, `filter`, `input`).
   > `dont shadow built-in dir`
 
+### Private markers on public surface
+
+The most common mislabel AI agents ship: an underscore-prefixed class or module that the caller has to name anyway. A type is either usable across the boundary or it isn't — "private type consumed externally" is not a state.
+
+- **Underscore-prefixed classes / dataclasses / enums / exceptions the caller imports, annotates against, subclasses, or `isinstance`-checks.** Drop the underscore. If it's on the public surface, name it publicly.
+  > `not private. drop the underscore — caller has to write it in signatures.`
+  > `type is either public or it isn't. "private class" doesn't exist if I have to import it.`
+  > `_Profile? you re-export it from __init__ and annotate params with it. rename.`
+- **Underscore-prefixed modules whose types leak.** `_transport.py` re-exported from `__init__.py`, or imported by a sibling package. Promote to `transport.py`.
+  > `if it's exported it isn't private. rename the module and give it a real home.`
+- **Private methods on a Protocol.** Protocols *are* the public contract; `_foo` on a Protocol is either public behavior (rename) or belongs on the impl, not the abstraction.
+  > `This is a protocol. A protocol shouldn't define a behavior for a private method.`
+- **"Private" configs / settings / options types** passed into public constructors or factories. If the caller must construct it, it's public.
+  > `caller builds this and hands it in — it's public. rename.`
+
+Grep test: any hit for the underscore-prefixed name from outside the defining module is a rename or a real encapsulation bug. Reviewer's job is to say which.
+
 ### Storage / write awareness (embedded, disk-constrained)
 
 - **Frequent writes to flash / SD / ext4.** Push to `/var/cache/`, `tmpfs`, or use `btrfs` for resilience.
@@ -253,6 +270,7 @@ This skill complements the `craftwright:discipline` skill (Part I principles). W
 - "Switch on type" → §OCP
 - "Adapters with business logic" → §SoC
 - "Public mutable state without invariants" → §Encapsulation
+- "Underscore-prefixed type consumed across the boundary" → §Visibility markers match reach
 - "Reaching through other.thing.other.zip" → §TDA
 - "Hardcoded behavior that varies by environment" → §MISU + §Validate at boundaries
 

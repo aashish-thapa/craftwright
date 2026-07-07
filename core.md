@@ -20,7 +20,7 @@ skills — reach for them when a decision needs the depth.
 
 ## Naming & comments
 
-Names carry the meaning — full words, booleans as questions (`is_ready`). If a comment explains *what* the code does, rename instead. Comment only the non-obvious *why*. No task/PR/history references in code or docstrings.
+Names carry the meaning — full words, booleans as questions (`is_ready`). If a comment explains *what* the code does, rename instead. Comment only the non-obvious *why*. No task/PR/history references in code or docstrings. **Visibility markers match reach:** a leading `_` (or `private`, `#field`) says "not reachable from outside" — if a caller imports it, annotates against it, or subclasses it, drop the marker. "Private type used externally" is a category error.
 
 ## Process
 
