@@ -1,6 +1,6 @@
 {
   "name": "craftwright",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Senior-engineer discipline for AI coding agents — SOLID, DRY, separation of concerns, plus a strict on-demand PR reviewer. Tool-agnostic rules (Claude Code, Codex, Cursor, Aider, Copilot, Antigravity, ...) with a Claude Code plugin for the richest install path.",
   "author": {
     "name": "Aashish Thapa"
