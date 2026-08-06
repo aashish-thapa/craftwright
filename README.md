@@ -19,10 +19,11 @@
 
 Modern AI coding agents produce code that compiles, passes tests, and ships. A senior engineer reading the diff sees five principles violated, a `switch` statement that should be polymorphism, and a class doing four things wearing one name.
 
-**craftwright** is the opposite of "vibe coding." A discipline skill and a fresh-context review agent, shipped as plain markdown that any AI coding agent can read:
+**craftwright** is the opposite of "vibe coding." A discipline skill, a fresh-context review agent, and an automated workflow graph — the first two as plain markdown any AI coding agent can read, the third wired for Claude Code:
 
 - A **discipline skill** that teaches your agent 16 system design principles (SOLID, DRY, separation of concerns, composition root, illegal-states-unrepresentable, ...) plus a code-discipline rulebook for commits, comments, scope, and verification.
 - A **senior-review agent** that channels the strict, abstraction-loving reviewer who used to send your PRs back four times — the one who reduced your 100-line function to a 10-line one and wrote the rewrite inline. It runs as a *fresh context* that sees only your diff, never the conversation that produced it — so it reviews your code, not its own reasoning. Now you get him on demand.
+- A **workflow graph** (Claude Code only) that wires those principles into a pipeline: research prior art, survey the codebase, plan, *stop for your approval*, implement, then review the diff through three independent lenses with adversarial verification and a bounded fix loop.
 
 A "wright" is a craftsperson: millwright, playwright, shipwright. **craftwright** is what your AI becomes when you install this.
 
@@ -36,7 +37,7 @@ One source of truth, every tool.
 
 | Your AI tool | Install | Notes |
 |---|---|---|
-| **Claude Code** | `/plugin marketplace add aashish-thapa/craftwright`<br>`/plugin install craftwright@craftwright` | Full: discipline skill + review agent + re-injection & commit hooks |
+| **Claude Code** | `/plugin marketplace add aashish-thapa/craftwright`<br>`/plugin install craftwright@craftwright` | Full: discipline skill + review agent + the `/craftwright:plan` → `/craftwright:build` workflow graph + re-injection & commit hooks |
 | **OpenAI Codex CLI** | `curl -sL https://raw.githubusercontent.com/aashish-thapa/craftwright/main/AGENTS.md >> AGENTS.md` | [details](adapters/codex-cli.md) |
 | **Cursor** | `curl -sL .../AGENTS.md > AGENTS.md` | [details](adapters/cursor.md) — reads AGENTS.md natively |
 | **Aider** | `curl -sL .../AGENTS.md > CONVENTIONS.md` | [details](adapters/aider.md) |
@@ -163,6 +164,70 @@ The agent includes a cross-reference table — when the review surfaces a violat
 
 **Invoke it** (Claude Code) by asking for a review — "review this PR", "review these changes", "would this pass review" — and Claude dispatches to the `senior-reviewer` agent; or pick it directly from the `/agents` menu. Other tools without a subagent mechanism read the same reviewer standard inline from `AGENTS.md` and review in-context.
 
+### 3. The workflow graph (`workflows/`) — Claude Code only
+
+A skill is *stated* discipline. An agent is *one* node. Neither says what runs after what.
+
+"Graph engineering" is the term that showed up in July 2026 for the layer above: prompt engineering controls one instruction, context engineering controls what the model sees, loop engineering controls how one agent's observe-reason-act cycle runs — and graph engineering controls **which nodes exist, which transitions are permitted, and where work fans out and rejoins**. The vocabulary is new; the idea shipped years earlier in LangGraph, AutoGen, and Google ADK. What's genuinely useful about the framing is the claim underneath it: *topology is an artifact you design, not something that emerges from one agent's judgment mid-task.*
+
+craftwright ships two of them. The split is not stylistic — a workflow **cannot pause for input mid-run**, so the approval gate has to be a boundary between two runs.
+
+```
+/craftwright:plan  ─────────────────────────────────── writes nothing
+     triage (router: design-shaped or mechanical?)
+        │
+        ├─ survey:ground ──────┐   read-only, parallel
+        ├─ survey:blast-radius ┤   research skipped entirely
+        └─ research ×2 ────────┘   when triage says mechanical
+                 ↓ join
+             architect ──→ critique ──→ revise (only if blocking)
+                 ↓
+            ┌──────────────────┐
+            │  YOU READ IT     │  ← the gate
+            └──────────────────┘
+                 ↓
+/craftwright:build ──────────────────── leaves a diff, never commits
+             implement          (serial: the only node that writes)
+                 ↓
+        ┌── architecture (senior-reviewer)
+        ├── correctness  (bug-hunter)      read-only, parallel
+        └── performance  (perf-reviewer)
+                 ↓
+          refute each blocking finding (independent agent, tries to kill it)
+                 ↓
+          survivors → fix → re-review   (max 2 rounds, stops when dry)
+```
+
+| Node | Reason to change | Writes? |
+|---|---|---|
+| `triage` | what counts as design-shaped vs mechanical | no |
+| `surveyor` | how to read a codebase's conventions, seams, and pinned versions | no |
+| `researcher` | how to find prior art without reinventing named patterns | no |
+| `architect` | what a plan owes the implementer, and what it owes the human at the gate | no |
+| `implementer` | how to execute a plan without expanding it | **yes** |
+| `senior-reviewer` | architecture (the existing agent, reused — not a second copy of it) | no |
+| `bug-hunter` | correctness | no |
+| `perf-reviewer` | performance | no |
+
+Four rules hold the graph together, and each one is the discipline applied to the topology rather than to the code:
+
+- **Fan out on reading, stay serial on writing.** Three reviewers in parallel is free; two agents editing the same tree is a merge conflict you can't see. One implementer, always.
+- **Every finding gets refuted before it becomes work.** An independent agent reads the actual code and tries to kill each blocking finding. Unlike the usual adversarial-verify recipe, a verifier that is genuinely unsure does *not* refute — a wrongly-dropped defect ships, a wrongly-kept one costs one fix. The asymmetry decides the default.
+- **Bounded, and loud about its bounds.** Two fix rounds, two verifications per lens. Anything past a cap is reported *unverified*, never silently dropped — a truncated review that reads as a clean one is worse than no review.
+- **It never commits.** The implementer leaves changes in the working tree. What enters your history stays your decision.
+
+```text
+/craftwright:plan add rate limiting to the public API
+# read the plan, its assumptions, and its "not doing" list
+/craftwright:build   # Claude passes it the plan
+```
+
+**Honest about the cost and the caveats:**
+
+- Requires Claude Code v2.1.154 or later, and workflows enabled. This is the first Claude-only component in a repo whose stance is portable markdown — the discipline skill and the reviewer standard stay in `AGENTS.md` for every other tool. The graph does not.
+- A `plan` run is ~6–8 agents. A `build` run is ~5 in the clean case, ~21 worst case (two full rounds with every cap hit) — under the 25-agent threshold where Claude Code flags a run as large, but this costs meaningfully more tokens than doing the same work in conversation.
+- The gate is real, not decorative. `plan` writes nothing; if you don't read the plan, you've spent tokens to skip the one step that makes the rest safe.
+
 ## Bonus: `Co-Authored-By: Claude` is not a thing
 
 You wrote the prompt. You reviewed the diff. You're the one who'll be on call when it breaks at 2am. Your AI assistant isn't your co-author and your `git log` doesn't need a sponsor.
@@ -224,8 +289,17 @@ craftwright is the opposite: two skills with a single editorial point of view ab
 craftwright/
 ├── skills/                          ← discipline skill (always-on, in-context)
 │   └── discipline/SKILL.md
-├── agents/                          ← fresh-context subagents
-│   └── review.md                    ← senior-reviewer; canonical review source
+├── agents/                          ← fresh-context subagents = the graph's nodes
+│   ├── review.md                    ← senior-reviewer; canonical review source
+│   ├── researcher.md                ← prior art
+│   ├── surveyor.md                  ← codebase cartography
+│   ├── architect.md                 ← the join node; writes the plan
+│   ├── implementer.md               ← the only node that writes code
+│   ├── bug-hunter.md                ← correctness lens
+│   └── perf-reviewer.md             ← performance lens
+├── workflows/                       ← the topology (Claude Code only)
+│   ├── plan.js                      ← /craftwright:plan — stops at the gate
+│   └── build.js                     ← /craftwright:build — implement, review, fix
 ├── core.md                          ← compressed spine, re-injected to fight drift
 ├── hooks/                           ← Claude Code hooks
 │   ├── hooks.json                   ← SessionStart/SubagentStart/UserPromptSubmit + PreToolUse
