@@ -28,8 +28,6 @@ A "wright" is a craftsperson: millwright, playwright, shipwright. **craftwright*
 
 ## Why this exists
 
-I used to work with a senior engineer who reviewed every PR I opened. Strict. Abstraction-loving. Terse. The kind who'd take 100 lines I'd written and reply with the 10-line version inline. Frustrating to get a review back from, every single time — and I learned something new every week. The code I shipped after his reviews was code I was still proud of years later.
-
 With AI assistants writing more of the code now and no one watching the diff with that level of scrutiny, the bar quietly slips. The patterns flagged constantly. The packages reached for instead of reinvented. The architecture refused to be let slide. If you've worked with a reviewer like that, you'll recognize it. If you haven't, this is what it sounds like.
 
 ## Install
